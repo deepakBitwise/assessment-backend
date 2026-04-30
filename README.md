@@ -15,14 +15,31 @@ Production-oriented FastAPI backend scaffold for the DIFY FDE assessment platfor
 ## Quick start
 
 ```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -e .[dev]
+uv venv .venv
 Copy-Item .env.example .env
-uvicorn app.main:app --reload
+uv run pip install -r requirements.txt
+uv run pip install -e .[dev]
+uv run uvicorn app.main:app --reload
 ```
 
 Open `http://127.0.0.1:8000/docs`.
+
+## Run guide
+
+Detailed startup instructions are in [RUN.md](C:/Users/deepakd2/Documents/assessment-backend/RUN.md).
+
+## Alternative setup
+
+If you prefer standard Python tooling instead of `uv`, this also works:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+Copy-Item .env.example .env
+pip install -r requirements.txt
+pip install -e .[dev]
+uvicorn app.main:app --reload
+```
 
 ## Local auth
 
