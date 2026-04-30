@@ -30,7 +30,6 @@ junit.xml
 
 # Local environment
 .env
-.env.*
 
 # App data
 assessment.db
