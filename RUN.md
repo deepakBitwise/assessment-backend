@@ -7,8 +7,10 @@ This project starts a FastAPI server from [app/main.py](/abs/c:/Users/deepakd2/D
 From the project root `C:\Users\deepakd2\Documents\assessment-backend`:
 
 ```powershell
-uv sync
-uv run fastapi dev app/main.py
+uv venv
+Copy-Item .env.example .env
+uv run pip install -r requirements.txt
+uv run uvicorn app.main:app --reload
 ```
 
 The server will start on:
