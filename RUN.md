@@ -7,11 +7,16 @@ This project starts a FastAPI server from [app/main.py](/abs/c:/Users/deepakd2/D
 From the project root `C:\Users\deepakd2\Documents\assessment-backend`:
 
 ```powershell
-uv venv
-Copy-Item .env.example .env
-uv run pip install -r requirements.txt
-uv run uvicorn app.main:app --reload
+uv venv  #to initiate virtual environment, active it if it doesn't get actived automatically.
+Copy-Item .env.example .env  #to create .env of same structure as .env.example
+uv pip install -r requirements.txt #to install all the dependencies
+uv run uvicorn app.main:app --reload #to run the program.
+
+# To add another library 
+uv add library_name
 ```
+
+
 
 The server will start on:
 
