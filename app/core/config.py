@@ -93,6 +93,10 @@ class Settings(BaseSettings):
     EMAIL_TEST_USER: EmailStr = "test@example.com"
     FIRST_SUPERUSER: EmailStr = "admin@example.com"
     FIRST_SUPERUSER_PASSWORD: str = "changethis"
+    MINIO_ENDPOINT: str
+    MINIO_ACCESS_KEY: str
+    MINIO_SECRET_KEY: str
+    MINIO_BUCKET: str
 
     def _check_default_secret(self, var_name: str, value: str | None) -> None:
         if value == "changethis":
