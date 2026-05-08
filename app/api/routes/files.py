@@ -88,6 +88,7 @@ def get_uploaded_files(
 def evaluate_submission(
     submission_id: str,
     session: SessionDep,
+    object_name: str = None
 ):
 
     files = session.query(SubmissionFile).filter(
@@ -101,13 +102,17 @@ def evaluate_submission(
         )
 
     file = files[0]
-
+    url = minio_client.presigned_get_object(
+    bucket_name=settings.MINIO_BUCKET,
+    object_name=object_name,
+    expires=timedelta(minutes=15)
+    )
     payload = {
         "submission_id": file.submission_id,
         "assessment_id": file.assessment_id,
         "attempt_number": 1,
         "artifact_urls": {
-            "solution": f"s3://{file.bucket_name}/{file.object_key}"
+            "solution": url
         },
         "required_deliverables": [
             "solution"
