@@ -127,3 +127,16 @@ class TokenPayload(SQLModel):
 class NewPassword(SQLModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+class SubmissionFile(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+
+    submission_id: str
+    assessment_id: str
+
+    file_name: str
+    object_key: str
+    bucket_name: str
+
+    uploaded_at: datetime = Field(default_factory=get_datetime_utc)
