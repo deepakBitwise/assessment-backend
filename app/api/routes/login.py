@@ -20,7 +20,7 @@ from app.utils import (
 router = APIRouter(tags=["login"])
 
 
-@router.post("/login/access-token")
+@router.post("/login/access-token", response_model=Token)
 def login_access_token(
     session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ) -> Token:
@@ -38,7 +38,8 @@ def login_access_token(
     return Token(
         access_token=security.create_access_token(
             user.id, expires_delta=access_token_expires
-        )
+        ),
+        token_type="bearer",
     )
 
 
