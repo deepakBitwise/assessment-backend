@@ -24,3 +24,7 @@ uv run uvicorn app.main:app --reload
 # To add another library
 uv add library_name
 
+
+#Tables migration error
+.\.venv\Scripts\python.exe -m alembic upgrade head
+
