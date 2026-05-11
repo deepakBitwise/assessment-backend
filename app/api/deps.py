@@ -11,7 +11,8 @@ from sqlmodel import Session
 from app.core import security
 from app.core.config import settings
 from app.core.db import engine
-from app.models import TokenPayload, User
+from app.models import TokenPayload, RefreshTokenPayload, User, UserSession
+from app import crud
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
@@ -56,3 +57,56 @@ def get_current_active_superuser(current_user: CurrentUser) -> User:
             status_code=403, detail="The user doesn't have enough privileges"
         )
     return current_user
+
+
+def get_refresh_token_payload(token: str) -> RefreshTokenPayload:
+    """Validate and decode refresh token"""
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
+        )
+        token_data = RefreshTokenPayload(**payload)
+        if not token_data.sub or not token_data.session_id:
+            raise ValueError("Invalid token structure")
+        return token_data
+    except (InvalidTokenError, ValidationError):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid refresh token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+def validate_user_session(
+    session: Session, user_id: str, session_id: str
+) -> UserSession:
+    """Validate that user session exists and is active"""
+    import uuid
+
+    try:
+        session_uuid = uuid.UUID(session_id)
+        user_uuid = uuid.UUID(user_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid session or user ID",
+        )
+
+    db_session = crud.get_user_session(session=session, session_id=session_uuid)
+    if not db_session:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Session not found",
+        )
+    if not db_session.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Session is inactive",
+        )
+    if db_session.user_id != user_uuid:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Session does not belong to user",
+        )
+
+    return db_session
