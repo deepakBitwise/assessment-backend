@@ -1,8 +1,10 @@
 import uuid
 from datetime import datetime, timezone
+from enum import Enum 
 
 from pydantic import EmailStr
-from sqlalchemy import DateTime
+from sqlalchemy import Column, DateTime, Enum as SAEnum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -129,14 +131,116 @@ class NewPassword(SQLModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
-class SubmissionFile(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
+class SubmissionStatus(str, Enum):
+    PENDING = "PENDING"
+    PASSED = "PASSED"
+    REJECTED = "REJECTED"
 
+
+DEFAULT_ASSESSMENT_ID = "assessment-1"
+DEFAULT_SUBMISSION_ID = "submission-1"
+
+
+class AssessmentBase(SQLModel):
+    problem_statement: str = Field(min_length=1)
+    deliverables: list[str] = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, default=list),
+    )
+    attachment_object_name: str | None = Field(default=None, max_length=512)
+
+
+class Assessment(SQLModel, table=True):
+    id: str = Field(default=DEFAULT_ASSESSMENT_ID, primary_key=True, max_length=255)
+    problem_statement: str = Field(min_length=1)
+    deliverables: list[str] = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, default=list),
+    )
+    attachment_object_name: str | None = Field(default=None, max_length=512)
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    updated_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class AssessmentCreate(AssessmentBase):
+    pass
+
+
+class AssessmentUpdate(SQLModel):
+    problem_statement: str = Field(min_length=1)
+    deliverables: list[str] = Field(default_factory=list)
+
+
+class AssessmentAttachmentUpdate(SQLModel):
+    attachment_object_name: str = Field(min_length=1, max_length=512)
+
+
+class AssessmentPublic(AssessmentBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class AssessmentsPublic(SQLModel):
+    data: list[AssessmentPublic]
+    count: int
+
+
+class SubmissionBase(SQLModel):
+    assessment_id: str = Field(
+        foreign_key="assessment.id", nullable=False, index=True, max_length=255
+    )
+    automated_check: SubmissionStatus = Field(
+        default=SubmissionStatus.PENDING,
+        sa_type=SAEnum(SubmissionStatus, name="submissionstatus"),
+    )
+    llm_judge: SubmissionStatus = Field(
+        default=SubmissionStatus.PENDING,
+        sa_type=SAEnum(SubmissionStatus, name="submissionstatus"),
+    )
+    human_reviewer: SubmissionStatus = Field(
+        default=SubmissionStatus.PENDING,
+        sa_type=SAEnum(SubmissionStatus, name="submissionstatus"),
+    )
+
+
+class Submission(SubmissionBase, table=True):
+    id: str = Field(default=DEFAULT_SUBMISSION_ID, primary_key=True, max_length=255)
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    updated_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class SubmissionCreate(SQLModel):
+    assessment_id: str = Field(min_length=1, max_length=255)
+
+
+class SubmissionStatusUpdate(SQLModel):
+    automated_check: SubmissionStatus | None = None
+    llm_judge: SubmissionStatus | None = None
+    human_reviewer: SubmissionStatus | None = None
+
+
+class SubmissionPublic(SubmissionBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class SubmissionTriggerResponse(SQLModel):
     submission_id: str
     assessment_id: str
+    status_code: int
+    response: dict | list | str | None = None
 
-    file_name: str
-    object_key: str
-    bucket_name: str
-
-    uploaded_at: datetime = Field(default_factory=get_datetime_utc)

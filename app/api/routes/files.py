@@ -1,12 +1,14 @@
 from datetime import timedelta
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from sqlmodel import Session
-import requests
-from app.core.minio_config import minio_client
-from app.core.config import settings
+from sqlmodel import select
+
 from app.api.deps import SessionDep
-from app.models import SubmissionFile
+from app.core.config import settings
+from app.core.minio_config import minio_client
+from app.models import Assessment, AssessmentAttachmentUpdate, get_datetime_utc
 
 
 router = APIRouter(prefix="/files", tags=["files"])
@@ -15,120 +17,81 @@ router = APIRouter(prefix="/files", tags=["files"])
 class UploadRequest(BaseModel):
     filename: str
     content_type: str
-
-    submission_id: str
     assessment_id: str
+
 
 @router.post("/upload-url")
 def generate_upload_url(
     data: UploadRequest,
     session: SessionDep,
-):
+) -> Any:
+    assessment = session.get(Assessment, data.assessment_id)
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
 
-    object_name = data.filename
+    object_name = f"assessments/{assessment.id}/attachments/{data.filename}"
 
     try:
         url = minio_client.presigned_put_object(
             bucket_name=settings.MINIO_BUCKET,
             object_name=object_name,
-            expires=timedelta(minutes=15)
+            expires=timedelta(minutes=15),
         )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-        db_file = SubmissionFile(
-            submission_id=data.submission_id,
-            assessment_id=data.assessment_id,
-            file_name=data.filename,
-            object_key=object_name,
+    assessment.sqlmodel_update(
+        AssessmentAttachmentUpdate(attachment_object_name=object_name).model_dump()
+    )
+    assessment.updated_at = get_datetime_utc()
+    session.add(assessment)
+    session.commit()
+
+    return {
+        "upload_url": url,
+        "object_name": object_name,
+    }
+
+
+@router.get("/download-url/{object_name:path}")
+def generate_download_url(object_name: str) -> Any:
+    try:
+        url = minio_client.presigned_get_object(
             bucket_name=settings.MINIO_BUCKET,
+            object_name=object_name,
+            expires=timedelta(minutes=15),
         )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-        session.add(db_file)
-        session.commit()
-        session.refresh(db_file)
+    return {
+        "download_url": url,
+    }
 
-        return {
-            "upload_url": url,
-            "object_name": object_name
-        }
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/download-url/{object_name}")
-def generate_download_url(object_name: str):
+@router.get("/assessment/{assessment_id}/download-url")
+def generate_assessment_download_url(
+    assessment_id: str,
+    session: SessionDep,
+) -> Any:
+    statement = select(Assessment.attachment_object_name).where(Assessment.id == assessment_id)
+    rows = session.exec(statement).all()
+    if not rows:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    object_name = rows[0]
+    if not object_name:
+        raise HTTPException(status_code=404, detail="Assessment attachment not found")
 
     try:
         url = minio_client.presigned_get_object(
             bucket_name=settings.MINIO_BUCKET,
             object_name=object_name,
-            expires=timedelta(minutes=15)
+            expires=timedelta(minutes=15),
         )
-
-        return {
-            "download_url": url
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
-
-@router.get("/{submission_id}")
-def get_uploaded_files(
-    submission_id: str,
-    session: SessionDep,
-):
-    files = session.query(SubmissionFile).filter(
-        SubmissionFile.submission_id == submission_id
-    ).all()
-
-    return files
-
-
-@router.post("/evaluate/{submission_id}")
-def evaluate_submission(
-    submission_id: str,
-    session: SessionDep,
-    object_name: str = None
-):
-
-    files = session.query(SubmissionFile).filter(
-        SubmissionFile.submission_id == submission_id
-    ).all()
-
-    if not files:
-        raise HTTPException(
-            status_code=404,
-            detail="No files found"
-        )
-
-    file = files[0]
-    url = minio_client.presigned_get_object(
-    bucket_name=settings.MINIO_BUCKET,
-    object_name=object_name,
-    expires=timedelta(minutes=15)
-    )
-    payload = {
-        "submission_id": file.submission_id,
-        "assessment_id": file.assessment_id,
-        "attempt_number": 1,
-        "artifact_urls": {
-            "solution": url
-        },
-        "required_deliverables": [
-            "solution"
-        ],
-        "min_harness_pass_rate": 0.7,
-        "test_cases": [],
-        "entry_point_role": "solution",
-        "tier2_webhook_url": ""
-    }
-
-    response = requests.post(
-        "http://localhost:8080/jobs/tier1",
-        json=payload
-    )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     return {
-        "status_code": response.status_code,
-        "response": response.json()
+        "object_name": object_name,
+        "download_url": url,
     }
