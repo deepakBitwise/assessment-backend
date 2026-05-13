@@ -1,4 +1,3 @@
-from datetime import timedelta
 from typing import Any
 
 import requests
@@ -7,7 +6,6 @@ from sqlmodel import select
 
 from app.api.deps import SessionDep
 from app.core.config import settings
-from app.core.minio_config import minio_client
 from app.models import (
     Assessment,
     DEFAULT_SUBMISSION_ID,
@@ -52,48 +50,52 @@ def submit_assessment(
     session.commit()
     session.refresh(submission)
 
-    # url = minio_client.presigned_get_object(
-    #     bucket_name=settings.MINIO_BUCKET,
-    #     object_name=object_name,
-    #     expires=timedelta(minutes=15),
-    # )
+    # if not settings.TIER1_SERVICE_TOKEN:
+    #     raise HTTPException(
+    #         status_code=500,
+    #         detail="TIER1_SERVICE_TOKEN is not configured",
+    #     )
+
     # payload = {
     #     "submission_id": str(submission.id),
     #     "assessment_id": str(submission.assessment_id),
+    #     "level": 1,
     #     "attempt_number": 1,
-    #     "artifact_urls": {
-    #         "solution": url
-    #     },
-    #     "required_deliverables": [
-    #         "solution"
-    #     ],
-    #     "min_harness_pass_rate": 0.7,
-    #     "test_cases": [],
-    #     "entry_point_role": "solution",
-    #     "tier2_webhook_url": ""
+    #     "zip_storage_key": object_name,
+    #     "agent_type": "standard",
+    #     "rubric_version": "rubv_001",
     # }
 
     # try:
     #     response = requests.post(
-    #         "http://localhost:8080/jobs/tier1",
+    #         settings.TIER1_JOB_URL,
+    #         headers={
+    #             "Authorization": f"Bearer {settings.TIER1_SERVICE_TOKEN}",
+    #             "Content-Type": "application/json",
+    #         },
     #         json=payload,
     #         timeout=30,
     #     )
-    #     response_body = response.json()
-    # except ValueError:
-    #     response_body = response.text
+    #     try:
+    #         response_body = response.json()
+    #     except ValueError:
+    #         response_body = response.text
+    #     response.raise_for_status()
     # except requests.RequestException as exc:
-    #     raise HTTPException(
-    #         status_code=502, detail=f"Failed to trigger external submission service: {exc}"
-    #     ) from exc
+    #     detail = (
+    #         response_body
+    #         if "response_body" in locals()
+    #         else f"Failed to trigger external submission service: {exc}"
+    #     )
+    #     raise HTTPException(status_code=502, detail=detail) from exc
 
     return SubmissionTriggerResponse(
         submission_id=submission.id,
         assessment_id=submission.assessment_id,
-        # status_code= response.status_code ,
-        # response=response_body,
         status_code=200,
         response={"message": "Submission triggered successfully (mock response)"},
+        # status_code=response.status_code,
+        # response=response_body,
     )
 
 
