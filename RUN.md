@@ -34,3 +34,9 @@ alembic heads
 alembic merge -m "fix multiple heads" 91f5f0953431 a5b8c9d0e1f2
 alembic upgrade head
 
+//Sometimes
+# 1. Create the migration script
+alembic revision --autogenerate -m "Add attachment_object_name to submission"
+
+# 2. Update the database
+alembic upgrade head

@@ -52,7 +52,7 @@ def submit_assessment(
         submission = Submission(
             id=new_id,
             assessment_id=submission_in.assessment_id,
-
+            attachment_object_name=object_name,
         )
 
         # 3. Transactional Save

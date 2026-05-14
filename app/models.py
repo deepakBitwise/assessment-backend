@@ -249,6 +249,7 @@ class SubmissionBase(SQLModel):
     assessment_id: str = Field(
         foreign_key="assessment.id", nullable=False, index=True, max_length=255
     )
+    attachment_object_name: str | None = Field(default=None, max_length=255)
     automated_check: SubmissionStatus = Field(
         default=SubmissionStatus.PENDING,
         sa_type=SAEnum(SubmissionStatus, name="submissionstatus"),
