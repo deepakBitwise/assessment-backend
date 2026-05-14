@@ -25,6 +25,12 @@ uv run uvicorn app.main:app --reload
 uv add library_name
 
 
-#Tables migration error
+#Tables migration error :
 .\.venv\Scripts\python.exe -m alembic upgrade head
+
+Fixing  alembic heads
+```bash
+alembic heads
+alembic merge -m "fix multiple heads" 91f5f0953431 a5b8c9d0e1f2
+alembic upgrade head
 
