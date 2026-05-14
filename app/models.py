@@ -12,11 +12,18 @@ def get_datetime_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class UserRole(str, Enum):
+    LEARNER = "LEARNER"
+    REVIEWER = "REVIEWER"
+    ADMIN = "ADMIN"
+
+
 class UserBase(SQLModel):
     email: EmailStr = Field(unique=True, index=True, max_length=255)
     is_active: bool = True
     is_superuser: bool = False
     full_name: str | None = Field(default=None, max_length=255)
+    role: UserRole = UserRole.LEARNER
 
 
 class UserCreate(UserBase):

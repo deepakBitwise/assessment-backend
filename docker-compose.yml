@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # --- PostgreSQL Container ---
   assessment-postgres:
-    image: postgres:latest
+    image: postgres:16
     container_name: postgres
     ports:
       - "5432:5432"
