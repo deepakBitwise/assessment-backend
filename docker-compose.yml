@@ -14,7 +14,7 @@ services:
     networks:
       - assessment-network
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     restart: unless-stopped
 
   # --- Minio Container ---
