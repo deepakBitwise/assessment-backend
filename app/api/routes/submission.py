@@ -1,18 +1,18 @@
 from typing import Any
 
-import requests
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlmodel import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import select
 
 from app.api.deps import SessionDep
-from app.core.config import settings
 from app.models import (
     Assessment,
-    DEFAULT_SUBMISSION_ID,
     Submission,
     SubmissionCreate,
+    SubmissionEventCreate,
+    SubmissionEvents,
+    SubmissionEventsPublic,
     SubmissionPublic,
     SubmissionStatusUpdate,
     SubmissionTriggerResponse,
@@ -52,7 +52,7 @@ def submit_assessment(
         submission = Submission(
             id=new_id,
             assessment_id=submission_in.assessment_id,
-
+            attachment_object_name=object_name,
         )
 
         # 3. Transactional Save
@@ -167,3 +167,57 @@ def update_submission_status(
     session.commit()
     session.refresh(submission)
     return submission
+
+
+@router.post(
+    "/submission/{submission_id}/events",
+    response_model=SubmissionEventsPublic,
+)
+def create_submission_events(
+    submission_id: str,
+    event_in: SubmissionEventCreate,
+    session: SessionDep,
+) -> Any:
+    submission = session.get(Submission, submission_id)
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+
+    statement = select(SubmissionEvents).where(
+        SubmissionEvents.submission_id == submission_id
+    )
+    submission_events = session.exec(statement).first()
+
+    if submission_events:
+        submission_events.events = [
+            *submission_events.events,
+            event_in.model_dump(),
+        ]
+    else:
+        submission_events = SubmissionEvents(
+            id=submission_id,
+            submission_id=submission_id,
+            events=[event_in.model_dump()],
+        )
+
+    session.add(submission_events)
+    session.commit()
+    session.refresh(submission_events)
+    return SubmissionEventsPublic.model_validate(submission_events)
+
+
+@router.get(
+    "/submission/{submission_id}/events",
+    response_model=SubmissionEventsPublic,
+)
+def read_submission_events(
+    submission_id: str,
+    session: SessionDep,
+) -> Any:
+    statement = select(SubmissionEvents).where(
+        SubmissionEvents.submission_id == submission_id
+    )
+    submission_events = session.exec(statement).first()
+    if not submission_events:
+        raise HTTPException(status_code=404, detail="Submission events not found")
+
+    return SubmissionEventsPublic.model_validate(submission_events)
