@@ -1,9 +1,10 @@
 import uuid
+import re
 from datetime import datetime, timezone
 from enum import Enum 
 
 from pydantic import EmailStr
-from sqlalchemy import Column, DateTime, Enum as SAEnum
+from sqlalchemy import Column, DateTime, Enum as SAEnum, event
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -19,6 +20,7 @@ class UserRole(str, Enum):
 
 
 class UserBase(SQLModel):
+    username: str = Field(unique=True, index=True, min_length=3, max_length=64)
     email: EmailStr = Field(unique=True, index=True, max_length=255)
     is_active: bool = True
     is_superuser: bool = False
@@ -27,22 +29,26 @@ class UserBase(SQLModel):
 
 
 class UserCreate(UserBase):
+    username: str | None = Field(default=None, min_length=3, max_length=64)
     password: str = Field(min_length=8, max_length=128)
 
 
 class UserRegister(SQLModel):
+    username: str = Field(min_length=3, max_length=64)
     email: EmailStr = Field(max_length=255)
     password: str = Field(min_length=8, max_length=128)
     full_name: str | None = Field(default=None, max_length=255)
 
 
 class UserUpdate(UserBase):
+    username: str | None = Field(default=None, min_length=3, max_length=64)
     email: EmailStr | None = Field(default=None, max_length=255)
     password: str | None = Field(default=None, min_length=8, max_length=128)
 
 
 class UserUpdateMe(SQLModel):
     full_name: str | None = Field(default=None, max_length=255)
+    username: str | None = Field(default=None, min_length=3, max_length=64)
     email: EmailStr | None = Field(default=None, max_length=255)
 
 
@@ -64,6 +70,16 @@ class User(UserBase, table=True):
         back_populates="user",
         cascade_delete=True,
     )
+
+
+@event.listens_for(User, "before_insert")
+def set_user_username_before_insert(mapper, connection, target: User) -> None:
+    if target.username:
+        target.username = target.username.strip().lower()
+        return
+
+    base = str(target.email).split("@", 1)[0].lower()
+    target.username = re.sub(r"[^a-z0-9._-]", "-", base).strip("-._")[:64] or "user"
 
 
 class UserPublic(UserBase):
