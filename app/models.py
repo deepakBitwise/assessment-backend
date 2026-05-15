@@ -1,3 +1,4 @@
+## app/models.py
 import uuid
 from datetime import datetime, timezone
 from enum import Enum 
@@ -297,4 +298,75 @@ class SubmissionTriggerResponse(SQLModel):
     assessment_id: str
     status_code: int
     response: dict | list | str | None = None
+
+
+class HumanReviewStatus(str, Enum):
+    PENDING = "PENDING"
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+
+
+class HumanReviewBase(SQLModel):
+    submission_id: str = Field(
+        foreign_key="submission.id",
+        nullable=False,
+        index=True,
+        max_length=255,
+    )
+
+    assessment_id: str = Field(
+        foreign_key="assessment.id",
+        nullable=False,
+        index=True,
+        max_length=255,
+    )
+
+    weighted_score: float | None = None
+
+    provisional_verdict: str | None = None
+
+    review_payload: dict | None = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
+    )
+
+    reviewer_comments: str | None = None
+
+    final_verdict: HumanReviewStatus = Field(
+        default=HumanReviewStatus.PENDING,
+        sa_type=SAEnum(HumanReviewStatus, name="humanreviewstatus"),
+    )
+
+
+class HumanReview(HumanReviewBase, table=True):
+    id: str = Field(primary_key=True, max_length=255)
+
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),
+    )
+
+    updated_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),
+    )
+
+
+class HumanReviewCreate(SQLModel):
+    submission_id: str
+    assessment_id: str
+    weighted_score: float | None = None
+    provisional_verdict: str | None = None
+    review_payload: dict | None = None
+
+
+class HumanReviewUpdate(SQLModel):
+    reviewer_comments: str | None = None
+    final_verdict: HumanReviewStatus
+
+
+class HumanReviewPublic(HumanReviewBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
 

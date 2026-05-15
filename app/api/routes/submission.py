@@ -1,3 +1,4 @@
+## app/api/routes/submission.py
 from typing import Any
 
 import requests
@@ -52,7 +53,7 @@ def submit_assessment(
         submission = Submission(
             id=new_id,
             assessment_id=submission_in.assessment_id,
-
+            attachment_object_name=submission_in.attachment_object_name,
         )
 
         # 3. Transactional Save
