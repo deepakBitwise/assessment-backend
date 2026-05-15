@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from enum import Enum 
+from enum import Enum
 
 from pydantic import EmailStr
 from sqlalchemy import Column, DateTime, Enum as SAEnum
@@ -188,6 +188,14 @@ class SubmissionStatus(str, Enum):
     PENDING = "PENDING"
     PASSED = "PASSED"
     REJECTED = "REJECTED"
+    QUEUED = "QUEUED"
+
+
+class SubmissionEventType(str, Enum):
+    SUCCESS = "SUCCESS"
+    FAILURE = "FAILURE"
+    WARNING = "WARNING"
+    GENERAL = "GENERAL"
 
 
 DEFAULT_ASSESSMENT_ID = "assessment-1"
@@ -262,7 +270,6 @@ class SubmissionBase(SQLModel):
         default=SubmissionStatus.PENDING,
         sa_type=SAEnum(SubmissionStatus, name="submissionstatus"),
     )
-    
 
 
 class Submission(SubmissionBase, table=True):
@@ -298,4 +305,43 @@ class SubmissionTriggerResponse(SQLModel):
     assessment_id: str
     status_code: int
     response: dict | list | str | None = None
+
+
+class SubmissionEventPayload(SQLModel):
+    type: SubmissionEventType
+    value: str = Field(min_length=1, max_length=2048)
+
+
+class SubmissionEventsBase(SQLModel):
+    events: list[SubmissionEventPayload] = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, default=list),
+        min_length=1,
+    )
+
+
+class SubmissionEvents(SubmissionEventsBase, table=True):
+    id: str = Field(primary_key=True, max_length=255)
+    submission_id: str = Field(
+        foreign_key="submission.id",
+        nullable=False,
+        index=True,
+        max_length=255,
+        ondelete="CASCADE",
+        unique=True,
+    )
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class SubmissionEventCreate(SubmissionEventPayload):
+    pass
+
+
+class SubmissionEventsPublic(SubmissionEventsBase):
+    id: str
+    submission_id: str
+    created_at: datetime
 
