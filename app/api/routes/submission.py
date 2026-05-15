@@ -1,16 +1,18 @@
 from typing import Any
 
-import requests
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query, status
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 
 from app.api.deps import SessionDep
-from app.core.config import settings
 from app.models import (
     Assessment,
-    DEFAULT_SUBMISSION_ID,
     Submission,
     SubmissionCreate,
+    SubmissionEventCreate,
+    SubmissionEvents,
+    SubmissionEventsPublic,
     SubmissionPublic,
     SubmissionStatusUpdate,
     SubmissionTriggerResponse,
@@ -39,16 +41,39 @@ def submit_assessment(
             status_code=400, detail="Assessment attachment is not uploaded yet"
         )
 
-    submission = session.get(Submission, DEFAULT_SUBMISSION_ID)
-    if submission:
-        submission.assessment_id = submission_in.assessment_id
-        submission.updated_at = get_datetime_utc()
-    else:
-        submission = Submission(assessment_id=submission_in.assessment_id)
+    try:
+        # 1. Calculate the new ID
+        # Using func.count() - note: this can be shaky if you delete records
+        statement = select(func.count()).select_from(Submission)
+        total_count = session.exec(statement).one()
+        new_id = f"submission-{total_count + 1}"
 
-    session.add(submission)
-    session.commit()
-    session.refresh(submission)
+        # 2. Instantiate the model
+        submission = Submission(
+            id=new_id,
+            assessment_id=submission_in.assessment_id,
+            attachment_object_name=object_name,
+        )
+
+        # 3. Transactional Save
+        session.add(submission)
+        session.commit()
+        session.refresh(submission)
+        
+    except IntegrityError as e:
+        # This triggers if 'new_id' already exists in the DB
+        session.rollback()  # Crucial: Reset the session state
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Submission ID {new_id} already exists. Please try again."
+        )
+    except Exception as e:
+        # Catch-all for database connection issues or other server errors
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while saving the submission."
+        )
 
     # if not settings.TIER1_SERVICE_TOKEN:
     #     raise HTTPException(
@@ -98,7 +123,7 @@ def submit_assessment(
         # response=response_body,
     )
 
-
+# Get unique submission by ID - useful for checking status after triggering
 @router.get("/submissions/{id}", response_model=SubmissionPublic)
 def read_submission(id: str, session: SessionDep) -> Any:
     submission = session.get(Submission, id)
@@ -106,6 +131,20 @@ def read_submission(id: str, session: SessionDep) -> Any:
         raise HTTPException(status_code=404, detail="Submission not found")
     return submission
 
+# Get all submissions with pagination - useful for listing and monitoring
+@router.get("/submissions", response_model=list[SubmissionPublic])
+def read_submissions(
+    session: SessionDep, 
+    offset: int = 0, 
+    limit: int = Query(default=100, le=100)
+) -> Any:
+    """
+    Retrieve all submissions.
+    """
+    print("Fetching all submissions...")
+    statement = select(Submission).offset(offset).limit(limit)
+    submissions = session.exec(statement).all()
+    return submissions
 
 @router.patch("/submissions/{id}/status", response_model=SubmissionPublic)
 def update_submission_status(
@@ -128,3 +167,57 @@ def update_submission_status(
     session.commit()
     session.refresh(submission)
     return submission
+
+
+@router.post(
+    "/submission/{submission_id}/events",
+    response_model=SubmissionEventsPublic,
+)
+def create_submission_events(
+    submission_id: str,
+    event_in: SubmissionEventCreate,
+    session: SessionDep,
+) -> Any:
+    submission = session.get(Submission, submission_id)
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+
+    statement = select(SubmissionEvents).where(
+        SubmissionEvents.submission_id == submission_id
+    )
+    submission_events = session.exec(statement).first()
+
+    if submission_events:
+        submission_events.events = [
+            *submission_events.events,
+            event_in.model_dump(),
+        ]
+    else:
+        submission_events = SubmissionEvents(
+            id=submission_id,
+            submission_id=submission_id,
+            events=[event_in.model_dump()],
+        )
+
+    session.add(submission_events)
+    session.commit()
+    session.refresh(submission_events)
+    return SubmissionEventsPublic.model_validate(submission_events)
+
+
+@router.get(
+    "/submission/{submission_id}/events",
+    response_model=SubmissionEventsPublic,
+)
+def read_submission_events(
+    submission_id: str,
+    session: SessionDep,
+) -> Any:
+    statement = select(SubmissionEvents).where(
+        SubmissionEvents.submission_id == submission_id
+    )
+    submission_events = session.exec(statement).first()
+    if not submission_events:
+        raise HTTPException(status_code=404, detail="Submission events not found")
+
+    return SubmissionEventsPublic.model_validate(submission_events)
