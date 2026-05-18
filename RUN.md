@@ -40,3 +40,11 @@ alembic revision --autogenerate -m "Add attachment_object_name to submission"
 
 # 2. Update the database
 alembic upgrade head
+
+
+# Initial Database /Tables Declaration Setup
+## First Delete all the .py files inside versions.
+```bash
+alembic revision --autogenerate -m "initial_setup"
+alembic upgrade head
+

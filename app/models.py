@@ -254,6 +254,7 @@ class AssessmentsPublic(SQLModel):
 
 
 class SubmissionBase(SQLModel):
+    user_id: str = Field(nullable=False, max_length=255) # Foreign key to User.id, but not enforced at DB level to allow flexibility in submission ID format
     assessment_id: str = Field(
         foreign_key="assessment.id", nullable=False, index=True, max_length=255
     )
@@ -285,6 +286,7 @@ class Submission(SubmissionBase, table=True):
 
 
 class SubmissionCreate(SQLModel):
+    user_id: str = Field(nullable=False, max_length=255) # Foreign key to User.id, but not enforced at DB level to allow flexibility in submission ID format
     assessment_id: str = Field(min_length=1, max_length=255)
 
 
