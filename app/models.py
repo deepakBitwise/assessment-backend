@@ -20,6 +20,7 @@ class UserRole(str, Enum):
 
 class UserBase(SQLModel):
     email: EmailStr = Field(unique=True, index=True, max_length=255)
+    username: str | None = Field(default=None, unique=True, index=True, max_length=255)
     is_active: bool = True
     is_superuser: bool = False
     full_name: str | None = Field(default=None, max_length=255)
@@ -32,6 +33,7 @@ class UserCreate(UserBase):
 
 class UserRegister(SQLModel):
     email: EmailStr = Field(max_length=255)
+    username: str = Field(min_length=1, max_length=255)
     password: str = Field(min_length=8, max_length=128)
     full_name: str | None = Field(default=None, max_length=255)
 
@@ -44,6 +46,7 @@ class UserUpdate(UserBase):
 class UserUpdateMe(SQLModel):
     full_name: str | None = Field(default=None, max_length=255)
     email: EmailStr | None = Field(default=None, max_length=255)
+    username: str | None = Field(default=None, min_length=1, max_length=255)
 
 
 class UpdatePassword(SQLModel):
@@ -125,6 +128,13 @@ class Token(SQLModel):
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int
+    user_id: uuid.UUID
+    email: EmailStr
+    username: str | None = None
+    full_name: str | None = None
+    is_active: bool
+    is_superuser: bool
+    role: UserRole
 
 
 class TokenPayload(SQLModel):

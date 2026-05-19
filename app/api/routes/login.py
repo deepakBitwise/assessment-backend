@@ -52,6 +52,28 @@ def get_device_info_from_headers(
     return {"device_type": device_type, "device_name": device_name}
 
 
+def build_token_response(
+    *,
+    user: Any,
+    access_token: str,
+    refresh_token: str,
+    expires_in: int,
+) -> Token:
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        expires_in=expires_in,
+        user_id=user.id,
+        email=user.email,
+        username=user.username,
+        full_name=user.full_name,
+        is_active=user.is_active,
+        is_superuser=user.is_superuser,
+        role=user.role,
+    )
+
+
 @router.post("/login/access-token", response_model=Token)
 def login_access_token(
     session: SessionDep,
@@ -61,12 +83,12 @@ def login_access_token(
 ) -> Token:
     user = crud.authenticate(
         session=session,
-        email=form_data.username,
+        email_or_username=form_data.username,
         password=form_data.password,
     )
 
     if not user:
-        raise HTTPException(status_code=400, detail="Incorrect email or password")
+        raise HTTPException(status_code=400, detail="Incorrect email/username or password")
     elif not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
 
@@ -107,10 +129,10 @@ def login_access_token(
         expires_delta=access_token_expires,
     )
 
-    return Token(
+    return build_token_response(
+        user=user,
         access_token=access_token,
         refresh_token=refresh_token,
-        token_type="bearer",
         expires_in=int(access_token_expires.total_seconds()),
     )
 
@@ -173,10 +195,10 @@ def refresh_access_token(
         expires_delta=access_token_expires,
     )
 
-    return Token(
+    return build_token_response(
+        user=user,
         access_token=access_token,
         refresh_token=refresh_token,
-        token_type="bearer",
         expires_in=int(access_token_expires.total_seconds()),
     )
 

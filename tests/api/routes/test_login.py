@@ -23,6 +23,34 @@ def test_get_access_token(client: TestClient) -> None:
     assert r.status_code == 200
     assert "access_token" in tokens
     assert tokens["access_token"]
+    assert tokens["user_id"]
+    assert tokens["username"] == settings.FIRST_SUPERUSER
+
+
+def test_get_access_token_with_username(client: TestClient, db: Session) -> None:
+    email = random_email()
+    username = random_lower_string()
+    password = random_lower_string()
+
+    user_create = UserCreate(
+        email=email,
+        username=username,
+        password=password,
+        is_active=True,
+    )
+    create_user(session=db, user_create=user_create)
+
+    login_data = {
+        "username": username,
+        "password": password,
+    }
+    r = client.post(f"{settings.API_V1_STR}/login/access-token", data=login_data)
+    tokens = r.json()
+
+    assert r.status_code == 200
+    assert tokens["access_token"]
+    assert tokens["email"] == email
+    assert tokens["username"] == username
 
 
 def test_get_access_token_incorrect_password(client: TestClient) -> None:
@@ -138,7 +166,12 @@ def test_login_with_bcrypt_password_upgrades_to_argon2(
     bcrypt_hash = bcrypt_hasher.hash(password)
     assert bcrypt_hash.startswith("$2")  # bcrypt hashes start with $2
 
-    user = User(email=email, hashed_password=bcrypt_hash, is_active=True)
+    user = User(
+        email=email,
+        username=email,
+        hashed_password=bcrypt_hash,
+        is_active=True,
+    )
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -150,6 +183,7 @@ def test_login_with_bcrypt_password_upgrades_to_argon2(
     assert r.status_code == 200
     tokens = r.json()
     assert "access_token" in tokens
+    assert tokens["username"] == email
 
     db.refresh(user)
 
@@ -172,7 +206,12 @@ def test_login_with_argon2_password_keeps_hash(client: TestClient, db: Session) 
     assert argon2_hash.startswith("$argon2")
 
     # Create user with argon2 hash
-    user = User(email=email, hashed_password=argon2_hash, is_active=True)
+    user = User(
+        email=email,
+        username=email,
+        hashed_password=argon2_hash,
+        is_active=True,
+    )
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -184,6 +223,7 @@ def test_login_with_argon2_password_keeps_hash(client: TestClient, db: Session) 
     assert r.status_code == 200
     tokens = r.json()
     assert "access_token" in tokens
+    assert tokens["username"] == email
 
     db.refresh(user)
 

@@ -8,9 +8,13 @@ from app.models import Item, ItemCreate, User, UserCreate, UserUpdate, UserSessi
 
 
 def create_user(*, session: Session, user_create: UserCreate) -> User:
+    username = user_create.username or user_create.email
     db_obj = User.model_validate(
         user_create,
-        update={"hashed_password": get_password_hash(user_create.password)},
+        update={
+            "username": username,
+            "hashed_password": get_password_hash(user_create.password),
+        },
     )
     session.add(db_obj)
     session.commit()
@@ -38,6 +42,11 @@ def get_user_by_email(*, session: Session, email: str) -> User | None:
     return session.exec(statement).first()
 
 
+def get_user_by_username(*, session: Session, username: str) -> User | None:
+    statement = select(User).where(User.username == username)
+    return session.exec(statement).first()
+
+
 def get_user_by_id(*, session: Session, user_id: uuid.UUID) -> User | None:
     return session.get(User, user_id)
 
@@ -45,8 +54,10 @@ def get_user_by_id(*, session: Session, user_id: uuid.UUID) -> User | None:
 DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$MjQyZWE1MzBjYjJlZTI0Yw$YTU4NGM5ZTZmYjE2NzZlZjY0ZWY3ZGRkY2U2OWFjNjk"
 
 
-def authenticate(*, session: Session, email: str, password: str) -> User | None:
-    db_user = get_user_by_email(session=session, email=email)
+def authenticate(*, session: Session, email_or_username: str, password: str) -> User | None:
+    db_user = get_user_by_email(session=session, email=email_or_username)
+    if not db_user:
+        db_user = get_user_by_username(session=session, username=email_or_username)
 
     if not db_user:
         verify_password(password, DUMMY_HASH)
