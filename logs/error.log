@@ -1,0 +1,17 @@
+2026-05-15 22:31:23,655 - app.api.deps - ERROR - [deps.py:61] - ❌ Database error while looking up user: (psycopg.errors.UndefinedTable) relation "user" does not exist
+LINE 2: FROM "user" 
+             ^
+[SQL: SELECT "user".username AS user_username, "user".email AS user_email, "user".is_active AS user_is_active, "user".is_superuser AS user_is_superuser, "user".full_name AS user_full_name, "user".role AS user_role, "user".id AS user_id, "user".hashed_password AS user_hashed_password, "user".created_at AS user_created_at 
+FROM "user" 
+WHERE "user".id = %(pk_1)s::UUID]
+[parameters: {'pk_1': 'ce694db9-5dfc-4b49-a883-354bd1bed6ac'}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2026-05-15 22:41:33,654 - app.api.routes.files - ERROR - [files.py:35] - ❌ Assessment not found: assessment-1
+2026-05-15 22:41:46,751 - app.api.routes.files - ERROR - [files.py:35] - ❌ Assessment not found: assessment-1
+2026-05-15 22:52:36,390 - app.api.routes.files - ERROR - [files.py:35] - ❌ Assessment not found: assessment-1
+2026-05-15 22:52:37,827 - app.api.routes.files - ERROR - [files.py:35] - ❌ Assessment not found: assessment-1
+2026-05-17 12:49:50,296 - app.api.routes.files - ERROR - [files.py:35] - ❌ Assessment not found: assessment-1
+2026-05-17 12:50:10,141 - app.api.routes.files - ERROR - [files.py:35] - ❌ Assessment not found: assessment-1
+2026-05-17 14:19:28,159 - app.api.routes.submission - ERROR - [submission.py:181] - ❌ Submission not found: submission-smoke-0848
+2026-05-19 09:37:29,162 - app.api.routes.files - ERROR - [files.py:35] - ❌ Assessment not found: assessment-1
+2026-05-19 09:37:34,449 - app.api.routes.files - ERROR - [files.py:35] - ❌ Assessment not found: assessment-1

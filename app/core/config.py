@@ -114,7 +114,6 @@ class Settings(BaseSettings):
 
     # Tier 1 evaluation service
     TIER1_JOB_URL: str = "http://localhost:8080/jobs/tier1"
-    TIER1_SERVICE_TOKEN: str = ""
 
     def _check_default_secret(self, var_name: str, value: str | None) -> None:
         if value == "changethis":

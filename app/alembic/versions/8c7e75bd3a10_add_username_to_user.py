@@ -1,7 +1,7 @@
 """Add username to user
 
 Revision ID: 8c7e75bd3a10
-Revises: f3e4d9f8c2a1
+Revises: 34fd6898b729
 Create Date: 2026-05-14 16:00:00.000000
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 revision = "8c7e75bd3a10"
-down_revision = "f3e4d9f8c2a1"
+down_revision = "34fd6898b729"
 branch_labels = None
 depends_on = None
 

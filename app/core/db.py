@@ -3,7 +3,7 @@ from sqlmodel import Session, create_engine, select
 from app import crud
 from app.core.config import settings
 from app.core.security import get_password_hash
-from app.models import User, UserCreate, UserRole
+from app.models import Assessment, DEFAULT_ASSESSMENT_ID, User, UserCreate, UserRole
 
 engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
 
@@ -107,3 +107,23 @@ def init_db(session: Session) -> None:
         role=UserRole.ADMIN,
         is_superuser=True,
     )
+
+    assessment = session.get(Assessment, DEFAULT_ASSESSMENT_ID)
+    if not assessment:
+        assessment = Assessment(
+            id=DEFAULT_ASSESSMENT_ID,
+            problem_statement=(
+                "Create a small project directory for a basic LLM agent. The agent "
+                "implementation should live in agent.py, configuration should be "
+                "stored in .env, a sample run should produce output.txt, and "
+                "README.md should explain exactly how to run the program."
+            ),
+            deliverables=[
+                "A ZIP file containing agent.py",
+                "The same ZIP must include output.txt from a successful sample run",
+                "The same ZIP must include .env with the expected environment variable structure",
+                "The same ZIP must include README.md with steps to install dependencies and run the agent",
+            ],
+        )
+        session.add(assessment)
+        session.commit()

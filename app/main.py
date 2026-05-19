@@ -4,7 +4,14 @@ from fastapi.routing import APIRoute
 from starlette.middleware.cors import CORSMiddleware
 
 from app.api.main import api_router
+from app.api.routes.submission import write_tier1_results
 from app.core.config import settings
+from app.core.logging_config import setup_logging, get_logger
+from app.models import SubmissionPublic
+
+# Initialize logging
+setup_logging()
+logger = get_logger(__name__)
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
@@ -31,3 +38,23 @@ if settings.all_cors_origins:
     )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+app.add_api_route(
+    "/submissions/{id}/tier1_results",
+    write_tier1_results,
+    methods=["POST"],
+    response_model=SubmissionPublic,
+    tags=["submission"],
+)
+
+# Startup event
+@app.on_event("startup")
+async def startup_event():
+    logger.info(f"🚀 Application started - Environment: {settings.ENVIRONMENT}")
+    logger.info(f"📝 CORS Origins: {settings.all_cors_origins}")
+    logger.info(f"📊 API Base URL: {settings.API_V1_STR}")
+    logger.info("✅ Logging system initialized")
+
+# Shutdown event
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("🛑 Application shutdown")

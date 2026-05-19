@@ -299,9 +299,14 @@ class Submission(SubmissionBase, table=True):
         sa_type=DateTime(timezone=True),  # type: ignore
     )
 
+    @property
+    def status(self) -> SubmissionStatus:
+        return self.automated_check
+
 
 class SubmissionCreate(SQLModel):
     assessment_id: str = Field(min_length=1, max_length=255)
+    attempt_number: int = Field(default=1, ge=1)
 
 
 class SubmissionStatusUpdate(SQLModel):

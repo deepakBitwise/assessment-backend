@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Header, status, Body
 from fastapi.responses import HTMLResponse
@@ -22,6 +23,8 @@ from app.utils import (
     send_email,
     verify_password_reset_token,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["login"])
 
@@ -59,6 +62,7 @@ def login_access_token(
     user_agent: str | None = Header(None),
     x_forwarded_for: str | None = Header(None),
 ) -> Token:
+    logger.info(f"🔐 Login attempt for: {form_data.username}")
     user = crud.authenticate(
         session=session,
         email=form_data.username,
@@ -66,9 +70,13 @@ def login_access_token(
     )
 
     if not user:
+        logger.warning(f"❌ Failed login attempt for: {form_data.username} (incorrect credentials)")
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     elif not user.is_active:
+        logger.warning(f"❌ Failed login attempt for: {form_data.username} (user inactive)")
         raise HTTPException(status_code=400, detail="Inactive user")
+
+    logger.info(f"✅ User authenticated: {user.email}, Role: {user.role}, ID: {user.id}")
 
     device_info = get_device_info_from_headers(user_agent)
     ip_address = x_forwarded_for.split(",")[0] if x_forwarded_for else None
@@ -106,6 +114,8 @@ def login_access_token(
         user.id,
         expires_delta=access_token_expires,
     )
+    
+    logger.info(f"✅ Tokens created for: {user.email}, Session ID: {session_id}")
 
     return Token(
         access_token=access_token,
@@ -183,6 +193,7 @@ def refresh_access_token(
 
 @router.post("/login/test-token", response_model=UserPublic)
 def test_token(current_user: CurrentUser) -> Any:
+    logger.info(f"✅ Token validated successfully - User: {current_user.email}, Role: {current_user.role}")
     return current_user
 
 
