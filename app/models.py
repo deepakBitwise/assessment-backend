@@ -461,20 +461,6 @@ class HumanReviewBase(SQLModel):
         sa_column=Column(JSONB, nullable=True),
     )
 
-
-class HumanReview(HumanReviewBase, table=True):
-    id: str = Field(primary_key=True, max_length=255)
-
-    created_at: datetime = Field(
-        default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),
-    )
-
-    updated_at: datetime = Field(
-        default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),
-    )
-
 class HumanReviewCreate(SQLModel):
     submission_id: str
     evaluator_payload: dict
