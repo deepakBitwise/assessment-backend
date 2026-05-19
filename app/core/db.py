@@ -3,7 +3,7 @@ from sqlmodel import Session, create_engine, select
 from app import crud
 from app.core.config import settings
 from app.core.security import get_password_hash
-from app.models import User, UserCreate, UserRole
+from app.models import Assessment, DEFAULT_ASSESSMENT_ID, User, UserCreate, UserRole
 
 engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
 
@@ -11,6 +11,7 @@ engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
 def ensure_seed_user(
     session: Session,
     *,
+    username: str,
     email: str,
     password: str,
     full_name: str,
@@ -23,6 +24,7 @@ def ensure_seed_user(
         return crud.create_user(
             session=session,
             user_create=UserCreate(
+                username=username,
                 email=email,
                 password=password,
                 full_name=full_name,
@@ -31,6 +33,7 @@ def ensure_seed_user(
             ),
         )
 
+    user.username = username
     user.full_name = full_name
     user.role = role
     user.is_superuser = is_superuser
@@ -62,6 +65,7 @@ def init_db(session: Session) -> None:
     ).first()
     if not user:
         user_in = UserCreate(
+            username="admin",
             email=settings.FIRST_SUPERUSER,
             password=settings.FIRST_SUPERUSER_PASSWORD,
             is_superuser=True,
@@ -77,6 +81,7 @@ def init_db(session: Session) -> None:
     # Create test users with stable credentials for local UI sign-in.
     ensure_seed_user(
         session,
+        username="learner",
         email="learner@example.com",
         password="SecurePass123!",
         full_name="Learner User",
@@ -84,6 +89,7 @@ def init_db(session: Session) -> None:
     )
     ensure_seed_user(
         session,
+        username="reviewer",
         email="reviewer@example.com",
         password="SecurePass123!",
         full_name="Reviewer User",
@@ -94,9 +100,30 @@ def init_db(session: Session) -> None:
     # credentials are stable even when the default superuser already exists.
     ensure_seed_user(
         session,
+        username="admin.user",
         email="admin.user@example.com",
         password="SecurePass123!",
         full_name="Administrator User",
         role=UserRole.ADMIN,
         is_superuser=True,
     )
+
+    assessment = session.get(Assessment, DEFAULT_ASSESSMENT_ID)
+    if not assessment:
+        assessment = Assessment(
+            id=DEFAULT_ASSESSMENT_ID,
+            problem_statement=(
+                "Create a small project directory for a basic LLM agent. The agent "
+                "implementation should live in agent.py, configuration should be "
+                "stored in .env, a sample run should produce output.txt, and "
+                "README.md should explain exactly how to run the program."
+            ),
+            deliverables=[
+                "A ZIP file containing agent.py",
+                "The same ZIP must include output.txt from a successful sample run",
+                "The same ZIP must include .env with the expected environment variable structure",
+                "The same ZIP must include README.md with steps to install dependencies and run the agent",
+            ],
+        )
+        session.add(assessment)
+        session.commit()

@@ -1,16 +1,45 @@
 import uuid
+import re
 from typing import Any
 
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from app.core.security import get_password_hash, verify_password
 from app.models import Item, ItemCreate, User, UserCreate, UserUpdate, UserSession
 
 
+def _username_from_email(email: str) -> str:
+    base = email.split("@", 1)[0].lower()
+    base = re.sub(r"[^a-z0-9._-]", "-", base).strip("-._")
+    return base[:64] or "user"
+
+
+def _unique_username(*, session: Session, email: str, username: str | None) -> str:
+    base = (username or _username_from_email(email)).strip().lower()
+    base = re.sub(r"[^a-z0-9._-]", "-", base).strip("-._")[:64] or "user"
+    candidate = base
+    suffix = 1
+
+    while get_user_by_username(session=session, username=candidate):
+        suffix_text = f"-{suffix}"
+        candidate = f"{base[:64 - len(suffix_text)]}{suffix_text}"
+        suffix += 1
+
+    return candidate
+
+
 def create_user(*, session: Session, user_create: UserCreate) -> User:
+    username = _unique_username(
+        session=session,
+        email=str(user_create.email),
+        username=user_create.username,
+    )
     db_obj = User.model_validate(
         user_create,
-        update={"hashed_password": get_password_hash(user_create.password)},
+        update={
+            "hashed_password": get_password_hash(user_create.password),
+            "username": username,
+        },
     )
     session.add(db_obj)
     session.commit()
@@ -38,6 +67,20 @@ def get_user_by_email(*, session: Session, email: str) -> User | None:
     return session.exec(statement).first()
 
 
+def get_user_by_username(*, session: Session, username: str) -> User | None:
+    statement = select(User).where(User.username == username)
+    return session.exec(statement).first()
+
+
+def get_user_by_login(*, session: Session, login: str) -> User | None:
+    normalized_login = login.strip().lower()
+    statement = select(User).where(
+        (func.lower(User.username) == normalized_login)
+        | (func.lower(User.email) == normalized_login)
+    )
+    return session.exec(statement).first()
+
+
 def get_user_by_id(*, session: Session, user_id: uuid.UUID) -> User | None:
     return session.get(User, user_id)
 
@@ -46,7 +89,7 @@ DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$MjQyZWE1MzBjYjJlZTI0Yw$YTU4NGM5ZTZm
 
 
 def authenticate(*, session: Session, email: str, password: str) -> User | None:
-    db_user = get_user_by_email(session=session, email=email)
+    db_user = get_user_by_login(session=session, login=email)
 
     if not db_user:
         verify_password(password, DUMMY_HASH)
