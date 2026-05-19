@@ -35,6 +35,8 @@ def submit_assessment(
     if not rows:
         raise HTTPException(status_code=404, detail="Assessment not found")
     object_name = rows[0]
+    user_id = submission_in.user_id
+    print(f"Received submission request for assessment_id: {submission_in.assessment_id} from user_id: {user_id}")
     print(f"Retrieved object_name from DB: {object_name}")
     if not object_name:
         raise HTTPException(
@@ -46,11 +48,12 @@ def submit_assessment(
         # Using func.count() - note: this can be shaky if you delete records
         statement = select(func.count()).select_from(Submission)
         total_count = session.exec(statement).one()
-        new_id = f"submission-{total_count + 1}"
+        new_id = f"{user_id}-submission-{total_count + 1}"
 
         # 2. Instantiate the model
         submission = Submission(
             id=new_id,
+            user_id=user_id,
             assessment_id=submission_in.assessment_id,
             attachment_object_name=object_name,
         )

@@ -12,6 +12,7 @@ def ensure_seed_user(
     session: Session,
     *,
     email: str,
+    username: str,
     password: str,
     full_name: str,
     role: UserRole,
@@ -24,6 +25,7 @@ def ensure_seed_user(
             session=session,
             user_create=UserCreate(
                 email=email,
+                username=username,
                 password=password,
                 full_name=full_name,
                 role=role,
@@ -31,6 +33,7 @@ def ensure_seed_user(
             ),
         )
 
+    user.username = username
     user.full_name = full_name
     user.role = role
     user.is_superuser = is_superuser
@@ -63,6 +66,7 @@ def init_db(session: Session) -> None:
     if not user:
         user_in = UserCreate(
             email=settings.FIRST_SUPERUSER,
+            username=settings.FIRST_SUPERUSER,
             password=settings.FIRST_SUPERUSER_PASSWORD,
             is_superuser=True,
             role=UserRole.ADMIN,
@@ -78,6 +82,7 @@ def init_db(session: Session) -> None:
     ensure_seed_user(
         session,
         email="learner@example.com",
+        username="learner",
         password="SecurePass123!",
         full_name="Learner User",
         role=UserRole.LEARNER,
@@ -85,6 +90,7 @@ def init_db(session: Session) -> None:
     ensure_seed_user(
         session,
         email="reviewer@example.com",
+        username="reviewer",
         password="SecurePass123!",
         full_name="Reviewer User",
         role=UserRole.REVIEWER,
@@ -95,6 +101,7 @@ def init_db(session: Session) -> None:
     ensure_seed_user(
         session,
         email="admin.user@example.com",
+        username="admin.user",
         password="SecurePass123!",
         full_name="Administrator User",
         role=UserRole.ADMIN,
