@@ -1,3 +1,4 @@
+## app/models.py
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
@@ -344,4 +345,58 @@ class SubmissionEventsPublic(SubmissionEventsBase):
     id: str
     submission_id: str
     created_at: datetime
+
+
+class HumanReviewStatus(str, Enum):
+    PENDING = "PENDING"
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+
+
+class HumanReviewBase(SQLModel):
+    submission_id: str = Field(
+        foreign_key="submission.id",
+        nullable=False,
+        index=True,
+        max_length=255,
+    )
+
+    reviewer_comments: str | None = Field(default=None)
+
+    final_verdict: HumanReviewStatus = Field(
+        default=HumanReviewStatus.PENDING,
+        sa_type=SAEnum(HumanReviewStatus, name="humanreviewstatus"),
+    )
+
+    evaluator_payload: dict | None = Field(
+        default=None,
+        sa_column=Column(JSONB, nullable=True),
+    )
+
+
+class HumanReview(HumanReviewBase, table=True):
+    id: str = Field(primary_key=True, max_length=255)
+
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),
+    )
+
+    updated_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),
+    )
+
+class HumanReviewCreate(SQLModel):
+    submission_id: str
+    evaluator_payload: dict
+
+class HumanReviewUpdate(SQLModel):
+    reviewer_comments: str | None = None
+    final_verdict: HumanReviewStatus
+
+class HumanReviewPublic(HumanReviewBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
 
