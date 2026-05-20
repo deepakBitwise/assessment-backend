@@ -3293,3 +3293,7 @@ WHERE "user".id = %(pk_1)s::UUID]
 2026-05-19 12:35:59,613 - app.api.routes.submission - INFO - [submission.py:185] - ✅ Submission retrieved - Status: SubmissionStatus.PENDING
 2026-05-19 12:36:59,947 - app.api.routes.submission - INFO - [submission.py:180] - 📋 Fetching submission details - ID: submission-8cfd8de3b2fd
 2026-05-19 12:36:59,977 - app.api.routes.submission - INFO - [submission.py:185] - ✅ Submission retrieved - Status: SubmissionStatus.PENDING
+2026-05-20 17:12:24,811 - app.main - INFO - [main.py:52] - 🚀 Application started - Environment: local
+2026-05-20 17:12:24,812 - app.main - INFO - [main.py:53] - 📝 CORS Origins: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173']
+2026-05-20 17:12:24,813 - app.main - INFO - [main.py:54] - 📊 API Base URL: /api/v1
+2026-05-20 17:12:24,814 - app.main - INFO - [main.py:55] - ✅ Logging system initialized
