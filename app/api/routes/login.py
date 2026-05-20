@@ -81,6 +81,7 @@ def login_access_token(
     user_agent: str | None = Header(None),
     x_forwarded_for: str | None = Header(None),
 ) -> Token:
+    print("Login attempt:", form_data.username)
     user = crud.authenticate(
         session=session,
         email_or_username=form_data.username,
