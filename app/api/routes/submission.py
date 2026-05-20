@@ -4,6 +4,8 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
+import requests
+from app.core.config import settings
 
 from app.api.deps import SessionDep
 from app.models import (
@@ -78,52 +80,53 @@ def submit_assessment(
             detail="An unexpected error occurred while saving the submission."
         )
 
-    # if not settings.TIER1_SERVICE_TOKEN:
-    #     raise HTTPException(
-    #         status_code=500,
-    #         detail="TIER1_SERVICE_TOKEN is not configured",
-    #     )
+    if not settings.TIER1_SERVICE_TOKEN:
+        raise HTTPException(
+            status_code=500,
+            detail="TIER1_SERVICE_TOKEN is not configured",
+        )
 
-    # payload = {
-    #     "submission_id": str(submission.id),
-    #     "assessment_id": str(submission.assessment_id),
-    #     "level": 1,
-    #     "attempt_number": 1,
-    #     "zip_storage_key": object_name,
-    #     "agent_type": "standard",
-    #     "rubric_version": "rubv_001",
-    # }
-
-    # try:
-    #     response = requests.post(
-    #         settings.TIER1_JOB_URL,
-    #         headers={
-    #             "Authorization": f"Bearer {settings.TIER1_SERVICE_TOKEN}",
-    #             "Content-Type": "application/json",
-    #         },
-    #         json=payload,
-    #         timeout=30,
-    #     )
-    #     try:
-    #         response_body = response.json()
-    #     except ValueError:
-    #         response_body = response.text
-    #     response.raise_for_status()
-    # except requests.RequestException as exc:
-    #     detail = (
-    #         response_body
-    #         if "response_body" in locals()
-    #         else f"Failed to trigger external submission service: {exc}"
-    #     )
-    #     raise HTTPException(status_code=502, detail=detail) from exc
+    payload = {
+        "submission_id": str(submission.id),
+        "assessment_id": str(submission.assessment_id),
+        "level": 1,
+        "attempt_number": 1,
+        "zip_storage_key": object_name,
+        "agent_type": "standard",
+        "rubric_version": "rubv_001",
+    }
+    print("payload" , payload)
+    try:
+        print(f"Triggering external evaluation service at {settings.TIER1_JOB_URL} with payload: {payload}")
+        response = requests.post(
+            settings.TIER1_JOB_URL,
+            headers={
+                "Authorization": f"Bearer {settings.TIER1_SERVICE_TOKEN}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=30,
+        )
+        try:
+            response_body = response.json()
+        except ValueError:
+            response_body = response.text
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        detail = (
+            response_body
+            if "response_body" in locals()
+            else f"Failed to trigger external submission service: {exc}"
+        )
+        raise HTTPException(status_code=502, detail=detail) from exc
 
     return SubmissionTriggerResponse(
         submission_id=submission.id,
         assessment_id=submission.assessment_id,
-        status_code=200,
-        response={"message": "Submission triggered successfully (mock response)"},
-        # status_code=response.status_code,
-        # response=response_body,
+        # status_code=200,
+        # response={"message": "Submission triggered successfully (mock response)"},
+        status_code=response.status_code,
+        response=response_body,
     )
 
 # Get unique submission by ID - useful for checking status after triggering
