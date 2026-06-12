@@ -190,16 +190,19 @@ def create_submission_events(
     )
     submission_events = session.exec(statement).first()
 
+    if event_in.timestamp is None:
+        event_in.timestamp = get_datetime_utc()
+
     if submission_events:
         submission_events.events = [
             *submission_events.events,
-            event_in.model_dump(),
+            event_in.model_dump(mode="json"),
         ]
     else:
         submission_events = SubmissionEvents(
             id=submission_id,
             submission_id=submission_id,
-            events=[event_in.model_dump()],
+            events=[event_in.model_dump(mode="json")],
         )
 
     session.add(submission_events)

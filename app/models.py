@@ -323,6 +323,7 @@ class SubmissionTriggerResponse(SQLModel):
 class SubmissionEventPayload(SQLModel):
     type: SubmissionEventType
     value: str = Field(min_length=1, max_length=2048)
+    timestamp: datetime | None = None
 
 
 class SubmissionEventsBase(SQLModel):
