@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 
 from app.api.deps import SessionDep
+from app.core.config import settings
 from app.models import (
     Assessment,
     Submission,
@@ -44,11 +45,19 @@ def submit_assessment(
         )
 
     try:
-        # 1. Calculate the new ID
-        # Using func.count() - note: this can be shaky if you delete records
-        statement = select(func.count()).select_from(Submission)
-        total_count = session.exec(statement).one()
-        new_id = f"{user_id}-submission-{total_count + 1}"
+        # 1. Count this user's existing submissions and enforce the limit
+        statement = select(func.count()).select_from(Submission).where(
+            Submission.user_id == user_id
+        )
+        user_submission_count = session.exec(statement).one()
+
+        if user_submission_count >= settings.MAX_SUBMISSIONS_PER_USER:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Submission limit of {settings.MAX_SUBMISSIONS_PER_USER} reached for this user.",
+            )
+
+        new_id = f"{user_id}-submission-{user_submission_count + 1}"
 
         # 2. Instantiate the model
         submission = Submission(
@@ -63,12 +72,13 @@ def submit_assessment(
         session.commit()
         session.refresh(submission)
         
-    except IntegrityError as e:
-        # This triggers if 'new_id' already exists in the DB
-        session.rollback()  # Crucial: Reset the session state
+    except HTTPException:
+        raise
+    except IntegrityError:
+        session.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Submission ID {new_id} already exists. Please try again."
+            detail="Submission ID already exists. Please try again.",
         )
     except Exception as e:
         # Catch-all for database connection issues or other server errors

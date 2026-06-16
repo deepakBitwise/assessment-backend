@@ -116,6 +116,9 @@ class Settings(BaseSettings):
     TIER1_JOB_URL: str = "http://localhost:8080/jobs/tier1"
     TIER1_SERVICE_TOKEN: str = ""
 
+    # Submission limit per user
+    MAX_SUBMISSIONS_PER_USER: int = 3
+
     def _check_default_secret(self, var_name: str, value: str | None) -> None:
         if value == "changethis":
             message = (

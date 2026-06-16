@@ -1,3 +1,4 @@
+import uuid
 from datetime import timedelta
 from typing import Any
 
@@ -29,7 +30,8 @@ def generate_upload_url(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    object_name = f"assessments/{assessment.id}/attachments/{data.filename}"
+    unique_prefix = uuid.uuid4().hex
+    object_name = f"assessments/{assessment.id}/attachments/{unique_prefix}_{data.filename}"
 
     try:
         url = minio_client.presigned_put_object(
