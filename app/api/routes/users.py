@@ -182,6 +182,23 @@ def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     return user
 
 
+@router.get("/{username}", response_model=UserPublic)
+def read_user_by_username(
+    username: str, session: SessionDep, current_user: CurrentUser
+) -> Any:
+    user = crud.get_user_by_username(session=session, username=username)
+    if user == current_user:
+        return user
+    # if not current_user.is_superuser:
+    #     raise HTTPException(
+    #         status_code=403,
+    #         detail="The user doesn't have enough privileges",
+    #     )
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
 @router.get("/{user_id}", response_model=UserPublic)
 def read_user_by_id(
     user_id: uuid.UUID, session: SessionDep, current_user: CurrentUser

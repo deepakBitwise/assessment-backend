@@ -141,6 +141,7 @@ class Token(SQLModel):
     is_active: bool
     is_superuser: bool
     role: UserRole
+    enrolled_assessments: list[str] = []
 
 
 class TokenPayload(SQLModel):

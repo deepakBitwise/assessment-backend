@@ -71,6 +71,7 @@ def build_token_response(
         is_active=user.is_active,
         is_superuser=user.is_superuser,
         role=user.role,
+        enrolled_assessments=user.enrolled_assessments,
     )
 
 
