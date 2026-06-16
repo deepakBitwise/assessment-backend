@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import assessment, files, items, login, private, submission, users, utils
+from app.api.routes import assessment, enrollment, files, items, login, private, submission, users, utils
 from app.core.config import settings
 from app.api.routes import human_review
 
@@ -13,6 +13,7 @@ api_router.include_router(assessment.router)
 api_router.include_router(files.router)
 api_router.include_router(submission.router)
 api_router.include_router(human_review.router)
+api_router.include_router(enrollment.router)
 
 
 if settings.ENVIRONMENT == "local":

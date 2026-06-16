@@ -1,15 +1,15 @@
-import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlmodel import select
 
 from app.api.deps import SessionDep
 from app.core.config import settings
 from app.core.minio_config import minio_client
-from app.models import Assessment, AssessmentAttachmentUpdate, get_datetime_utc
+from app.models import Assessment, AssessmentAttachmentUpdate, Submission, get_datetime_utc
 
 
 router = APIRouter(prefix="/files", tags=["files"])
@@ -30,8 +30,10 @@ def generate_upload_url(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    unique_prefix = uuid.uuid4().hex
-    object_name = f"assessments/{assessment.id}/attachments/{unique_prefix}_{data.filename}"
+    old_object_name = assessment.attachment_object_name
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    object_name = f"assessments/{assessment.id}/attachments/{timestamp}_{data.filename}"
 
     try:
         url = minio_client.presigned_put_object(
@@ -41,6 +43,23 @@ def generate_upload_url(
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    # Delete the previous object only if no submission has already captured it.
+    # If a submission references it, the file must be preserved for that record.
+    if old_object_name:
+        ref_count = session.exec(
+            select(func.count()).select_from(Submission).where(
+                Submission.attachment_object_name == old_object_name
+            )
+        ).one()
+        if ref_count == 0:
+            try:
+                minio_client.remove_object(
+                    bucket_name=settings.MINIO_BUCKET,
+                    object_name=old_object_name,
+                )
+            except Exception:
+                pass  # best-effort cleanup; don't fail the request
 
     assessment.sqlmodel_update(
         AssessmentAttachmentUpdate(attachment_object_name=object_name).model_dump()
