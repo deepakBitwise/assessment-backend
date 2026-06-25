@@ -114,7 +114,10 @@ class Settings(BaseSettings):
 
     # Tier 1 evaluation service
     TIER1_JOB_URL: str = "http://localhost:8080/jobs/tier1"
-    TIER1_SERVICE_TOKEN: str = ""
+    TIER1_SERVICE_TOKEN: str = "xyz"
+
+    # LLM judge (tier 2) callback token — leave empty to disable auth check in dev
+    LLM_JUDGE_SERVICE_TOKEN: str = "xyz"
 
     # Submission limit per user
     MAX_SUBMISSIONS_PER_USER: int = 3

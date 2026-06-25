@@ -441,3 +441,147 @@ class HumanReviewPublic(HumanReviewBase):
     created_at: datetime
     updated_at: datetime
 
+
+class LLMJudgeResultCreate(SQLModel):
+    submission_id: str = Field(min_length=1, max_length=255)
+    assessment_id: str = Field(min_length=1, max_length=255)
+    project_type: str | None = Field(default=None, max_length=255)
+    level: str | None = None
+    attempt_number: int | None = None
+    rubric_version: str | None = Field(default=None, max_length=255)
+    tier: str = Field(min_length=1, max_length=255)
+    evaluated_at: datetime
+
+    tier1_score: float | None = None
+    tier1_max: float | None = None
+    tier2_score: float | None = None
+    tier2_max: float | None = None
+    tier2_weighted_raw: float | None = None
+    final_score: float | None = None
+    final_score_max: float | None = None
+    weighted_score: float | None = None
+
+    judge_runs: list[dict] = Field(default_factory=list)
+    median_scores: dict = Field(default_factory=dict)
+    score_dispersion: dict = Field(default_factory=dict)
+    dimension_citations: dict = Field(default_factory=dict)
+    dimension_rationales: dict = Field(default_factory=dict)
+    score_breakdown: dict = Field(default_factory=dict)
+
+    provisional_verdict: str = Field(min_length=1, max_length=50)
+    needs_human_review: bool = False
+    review_reasons: list[str] = Field(default_factory=list)
+    failing_dimensions: list[str] = Field(default_factory=list)
+    next_action: str | None = Field(default=None, max_length=255)
+
+
+class LLMJudgeResult(SQLModel, table=True):
+    id: str = Field(primary_key=True, max_length=255)
+    submission_id: str = Field(
+        foreign_key="submission.id",
+        nullable=False,
+        index=True,
+        unique=True,
+        max_length=255,
+        ondelete="CASCADE",
+    )
+    assessment_id: str = Field(max_length=255, nullable=False)
+    project_type: str | None = Field(default=None, max_length=255)
+    level: str | None = Field(default=None, max_length=255)
+    attempt_number: int | None = Field(default=None)
+    rubric_version: str | None = Field(default=None, max_length=255)
+    tier: str = Field(max_length=255, nullable=False)
+    evaluated_at: datetime = Field(sa_type=DateTime(timezone=True))  # type: ignore
+
+    tier1_score: float | None = None
+    tier1_max: float | None = None
+    tier2_score: float | None = None
+    tier2_max: float | None = None
+    tier2_weighted_raw: float | None = None
+    final_score: float | None = None
+    final_score_max: float | None = None
+    weighted_score: float | None = None
+
+    judge_runs: list[dict] = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, default=list),
+    )
+    median_scores: dict = Field(
+        default_factory=dict,
+        sa_column=Column(JSONB, nullable=False, default=dict),
+    )
+    score_dispersion: dict = Field(
+        default_factory=dict,
+        sa_column=Column(JSONB, nullable=False, default=dict),
+    )
+    dimension_citations: dict = Field(
+        default_factory=dict,
+        sa_column=Column(JSONB, nullable=False, default=dict),
+    )
+    dimension_rationales: dict = Field(
+        default_factory=dict,
+        sa_column=Column(JSONB, nullable=False, default=dict),
+    )
+    score_breakdown: dict = Field(
+        default_factory=dict,
+        sa_column=Column(JSONB, nullable=False, default=dict),
+    )
+    review_reasons: list[str] = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, default=list),
+    )
+    failing_dimensions: list[str] = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, default=list),
+    )
+
+    provisional_verdict: str = Field(max_length=50, nullable=False)
+    needs_human_review: bool = Field(default=False, nullable=False)
+    next_action: str | None = Field(default=None, max_length=255)
+
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    updated_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class LLMJudgeResultPublic(SQLModel):
+    id: str
+    submission_id: str
+    assessment_id: str
+    project_type: str | None
+    level: str | None
+    attempt_number: int | None
+    rubric_version: str | None
+    tier: str
+    evaluated_at: datetime
+
+    tier1_score: float | None
+    tier1_max: float | None
+    tier2_score: float | None
+    tier2_max: float | None
+    tier2_weighted_raw: float | None
+    final_score: float | None
+    final_score_max: float | None
+    weighted_score: float | None
+
+    judge_runs: list[dict]
+    median_scores: dict
+    score_dispersion: dict
+    dimension_citations: dict
+    dimension_rationales: dict
+    score_breakdown: dict
+
+    provisional_verdict: str
+    needs_human_review: bool
+    review_reasons: list[str]
+    failing_dimensions: list[str]
+    next_action: str | None
+
+    created_at: datetime
+    updated_at: datetime
+
